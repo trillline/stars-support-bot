@@ -1,0 +1,9 @@
+version: '3.9'
+
+services:
+  bot_support:
+    build: .
+    command: sh -c "python run.py"
+    env_file:
+      - ./.env
+    restart: always
