@@ -14,7 +14,7 @@ admin_id = os.getenv("ADMIN_ID")
 @main_router.message(CommandStart())
 async def start_handler(event: Message | CallbackQuery, state: FSMContext, bot: Bot):
     await state.set_data({})
-    text = """
+    text_default = """
 <b>Здравствуйте! Если у вас возникли проблемы с получением звезд на аккаунт, отправьте заявку по шаблону ниже</b>
 
 1) Номер заказа (если CryptoBot, то ищите внизу в CryptoBot Mini App) или чек об оплате (PDF/скриншот из банка/TXID)
@@ -24,11 +24,19 @@ async def start_handler(event: Message | CallbackQuery, state: FSMContext, bot: 
 5) Краткое описание проблемы
 
 Ответим вам оперативно, если ваш запрос по делу ⚡️"""
+    text_sbp = """
+<b>Здравствуйте! Для покупки товара за рубли без комиссии отправьте мне скопированное сообщение с информацией о заказе!</b>
+
+Если каким-то образом это сообщение вы удалили, вернитесь обратно в бота и снова скопируйте.
+    """
     if isinstance(event, Message):
-        await event.answer(text=text, parse_mode="HTML")
+        if len(event.text.split()) > 1 and event.text.split()[1] == "sbp":
+            await event.answer(text=text_sbp, parse_mode="HTML")
+        else:
+            await event.answer(text=text_default, parse_mode="HTML")
     else:
         await bot.delete_message(event.message.chat.id, event.message.message_id)
-        await event.message.answer(text=text, parse_mode="HTML")
+        await event.message.answer(text=text_default, parse_mode="HTML")
     await state.set_state(SaveText.write_text)
 
 
@@ -46,7 +54,7 @@ async def write_message(message: Message, state: FSMContext):
 @main_router.callback_query(F.data.startswith("send_message"))
 async def send_message(callback: CallbackQuery, state: FSMContext, bot: Bot):
     await state.set_state(None)
-    await callback.answer()
+    await callback.message.delete()
     data = await state.get_data()
     user_id = callback.data.split('_')[-1]
     await state.update_data(recipient_id=user_id)
@@ -70,10 +78,10 @@ async def state_to_respond_message(callback: CallbackQuery,state: FSMContext):
 
 @main_router.message(AnswerProblem.give_answer)
 async def answer_problem(message: Message, state: FSMContext, bot: Bot):
-    text = message.text
+    text = message.html_text
     data = await state.get_data()
     recipient_id = data["recipient_id"]
-    await bot.send_message(chat_id=recipient_id, text=f"⚠️ Ответ от администрации:\n\n{text}")
+    await bot.send_message(chat_id=recipient_id, text=f"⚠️ Ответ от администрации:\n\n{text}", parse_mode="HTML")
     await state.set_state(None)
 
 @main_router.callback_query(F.data == "delete_message")
